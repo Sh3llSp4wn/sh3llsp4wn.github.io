@@ -1,5 +1,6 @@
 ---
 layout: default
+title: landing
 ---
 
 Hi. Thank you for coming to my Malware Conservatory. Here we keep and display only the finest of malware and offensive tooling. If you have chosen to be one of our highly descerning guests, please, make yourself at home and enjoy the samples on display.
@@ -11,3 +12,6 @@ Hi. Thank you for coming to my Malware Conservatory. Here we keep and display on
 ## Upcoming Research
 
 * Shellcode Generation with `gcc`, `ld`, and `as`.
+
+
+{% include posts.html %}
