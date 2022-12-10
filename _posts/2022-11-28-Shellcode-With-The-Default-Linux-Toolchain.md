@@ -53,15 +53,15 @@ int main(){
 
 Upon disassembly this c program uses the `write` wrapper provided by the compiler's standard library. These eventually resolve to the actual `write` syscall, but not without some layers of abstraction and error checking. (In most standard library implementations these `syscall` like interfaces provide a clean interface for extracting error conditions via the `errno` pattern. This constitutes a large amount of the code the standard library provides in addition to the call to the actual syscall interface itself.)
 
-![](./main_dis.png)
+![](assets/images/main_dis.png)
 
 So, lets look at what this imported `write` looks like.
 
-![](./write_dis.png)
+![](assets/images/write_dis.png)
 
 Soo, all this extra code just to do this small pattern...
 
-![](./write_syscall.png)
+![](assets/images/write_syscall.png)
 
 
 ### Slightly Less Clasic Shellcode Technique: pwntools shellcode generators
