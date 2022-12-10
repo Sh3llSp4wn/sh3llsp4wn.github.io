@@ -64,6 +64,27 @@ Soo, all this extra code just to do this small pattern...
 ![](/images/write_syscall.png)
 
 
+We can see in the above screenshot the Linux ABI registers being loaded via various stack arguments and registers. The core thing to understand about the `syscall` interface is that it relies on a syscall value loaded into the `[e,r]ax` register. This AX value is overwritten by the return value of the syscall. The x86\_64 ABI argument registers are as follows...
+
+```asm
+section .text
+bits 64
+global _start
+SYS_write equ 1
+
+_start:
+  mov rax, SYS_write
+  mov rdi, 1
+  lea rsi, [rel msg]
+  mov rdx, msglen
+  syscall
+  ret
+
+;section .data
+msg db 'hello, friend',0xa,0
+msglen equ $-msg
+```
+
 ### Slightly Less Clasic Shellcode Technique: pwntools shellcode generators
 
 
