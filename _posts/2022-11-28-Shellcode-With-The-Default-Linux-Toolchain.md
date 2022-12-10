@@ -66,7 +66,7 @@ Soo, all this extra code just to do this small pattern...
 
 We can see in the above screenshot the Linux ABI registers being loaded via various stack arguments and registers. The core thing to understand about the `syscall` interface is that it relies on a syscall value loaded into the `[e,r]ax` register. This AX value is overwritten by the return value of the syscall. The x86\_64 ABI argument registers are as follows...
 
-```asm
+```nasm
 section .text
 bits 64
 global _start
@@ -80,10 +80,22 @@ _start:
   syscall
   ret
 
-;section .data
 msg db 'hello, friend',0xa,0
 msglen equ $-msg
 ```
+
+This, when compiled via the following command; `nasm shellcode.s` creates a small binary that is just the compiled instructions we specified. 
+
+![](/images/hexdump_write_shellcode.png)
+![](/images/write_shellcode_disassembly.png)
+
+The only reason this code we wrote is position independant is because we forced it to be via the `rel` directive in the `lea` command. This causes the assembler to output `[r,e]ip` relative instructions. Otherwise the assembler will spit out code that tries to load the address `0x1a` instead of `[rip + 0x1a]`. This can cause... issues. 
+
+Knowing and remebering all the things that could possibly be realitve in shellcode is a signifigant difficulty in it's creation. That being said, we are not at the complaining step yet. So, lets continue with this example.
+
+
+
+
 
 ### Slightly Less Clasic Shellcode Technique: pwntools shellcode generators
 
