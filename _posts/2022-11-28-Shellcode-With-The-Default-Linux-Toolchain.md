@@ -40,7 +40,7 @@ That being said, the process of creating these chunks of code is extremely non-t
 
 A classic technique for the creation of shellcode is, in effect, The most direct possible way. Just writing it in direct assembly and assembling it with the options to output the raw instructions. The details are easier to deliver via example, so we will go through the basic "hello world" example in shellcode. This requires using interfaces that the compiler does not typically expose to programmers. So, for our example, we will emulate the following C code in assembly.
 
-```C
+```c
 
 static char* msg = "Hello, Friend\n";
 
@@ -86,7 +86,7 @@ _start:
   syscall
   ret
 
-msg db 'hello, friend',0xa,0
+msg db "hello, friend",0xa,0
 msglen equ $-msg
 ```
 
