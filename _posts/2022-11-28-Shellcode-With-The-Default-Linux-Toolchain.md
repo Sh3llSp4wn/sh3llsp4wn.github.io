@@ -131,9 +131,16 @@ As you can see, the operative portion of this shellcode generator is the call to
 
 ### Even more obscure shellcode technique: radare2 egg compiler
 
+The wonderful and glorious `radare2` project includes a subproject called `ragg2` or `radare2 egg` language. It behaves similarly to C with some core functionality stripped out. This means that the `ragg2` "compiler" is also able to handle simple examples such as our C shellcode from before. So, let's compile our `shellcode.c` with it and see what it puts out.
+
+![](/images/ragg2.png)
+
+So, based on the output we can see the `ragg2` binary calls `clang` with some special arguments to better prepare the generated code to be used in a shellcode context. This first call uses the `-S` paramtere which tells `gcc`, `clang`, and some other compilers to output assembler compatible assembly language rather than a binary file. `ragg2` then does... something with this `.s` file and compiles it from assembly language to an ELF. Once this process is complete `ragg2` then uses `rabin2` to carve out the `.text` section, which is our shellcode. We save this off as `shellcode.ragg2` and are finally ready to create our shellcode tester.
+
 
 ### A Debuggable Shellcode Tester
 
+...
 
 ## Bootloaders
 
