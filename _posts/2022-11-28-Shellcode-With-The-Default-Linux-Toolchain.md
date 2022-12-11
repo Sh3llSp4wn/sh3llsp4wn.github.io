@@ -38,7 +38,7 @@ That being said, the process of creating these chunks of code is extremely non-t
 
 ### Classic Shellcode Technique: The Good Ol' Assembler
 
-A classic technique for the creation of shellcode is, in effect, using xxd to rip out the `.text` section from a compiled ELF. The details are easier to deliver via example, so we will go through a basic "hello world" in shellcode. This requires using interfaces that the compiler does not typically expose to programmers. So for our example, we will emulate the following C code in assembly "language".
+A classic technique for the creation of shellcode is, in effect, The most direct possible way. Just writing it in direct assembly and assembling it with the options to output the raw instructions. The details are easier to deliver via example, so we will go through the basic "hello world" example in shellcode. This requires using interfaces that the compiler does not typically expose to programmers. So, for our example, we will emulate the following C code in assembly.
 
 ```C
 
@@ -51,8 +51,7 @@ int main(){
 
 ```
 
-Upon disassemble this c program uses the `write` wrapper provided by the compiler's standard library. These eventually resolve to the actual `write` syscall, but not without some layers of abstraction and error checking. (In most standard library implementations these `syscall` like interfaces provide a clean interface for extracting error conditions via the `errno` pattern. This constitutes a large amount of the code the standard library provides in addition to the call to the actual syscall interface itself.)
-
+Upon disassembly this c program uses the `write` wrapper provided by the OS standard library. These eventually resolve to the actual `write` syscall, but not without significant layers of abstraction and error checking. (In most standard library implementations these `syscall` like interfaces provide a clean interface for extracting error conditions via the `errno` pattern. This constitutes a large amount of the code the standard library provides - in addition to the call to the actual syscall interface itself.).
 ![](/images/main_dis.png)
 
 So, lets look at what this imported `write` looks like.
@@ -63,8 +62,15 @@ Soo, all this extra code just to do this small pattern...
 
 ![](/images/write_syscall.png)
 
+We can see in the above screenshot the Linux ABI registers being loaded via various stack arguments and registers. The core thing to understand about the `syscall` interface is that it relies on a syscall value loaded into the `[e,r]ax` register. This AX value is overwritten by the return value of the syscall. The x86\_64 ABI argument registers are as follows:
 
-We can see in the above screenshot the Linux ABI registers being loaded via various stack arguments and registers. The core thing to understand about the `syscall` interface is that it relies on a syscall value loaded into the `[e,r]ax` register. This AX value is overwritten by the return value of the syscall. The x86\_64 ABI argument registers are as follows...
+```python
+reg_seq = ['rdi', 'rsi', 'rdx', 'r10', 'r8', 'r9']
+```
+
+These registers are loaded with argument 1 in `rdi`, argument 2 in `rsi`, and etc etc. They often are loaded backwards in assembly language. This convention is preserved from 32-bit x86 assembly where arguments were pushed to the stack "from right to left" which is to say where the last argument is pushed on the stack first. This is why, often, in 64-bit x86 assembly (which does it's first arguments via registers) the registers are set up in "reverse" order, even though the registers can be set up in a totally arbitrary order.
+
+What follows is our x86\_64 `write` shellcode:
 
 ```nasm
 section .text
@@ -84,14 +90,17 @@ msg db 'hello, friend',0xa,0
 msglen equ $-msg
 ```
 
-This, when compiled via the following command; `nasm shellcode.s` creates a small binary that is just the compiled instructions we specified. 
+This, when compiled via the following command; `nasm shellcode.s` creates a small `shellcode` binary that is just the compiled instructions we specified. 
 
 ![](/images/hexdump_write_shellcode.png)
 ![](/images/write_shellcode_disassembly.png)
 
-The only reason this code we wrote is position independent is because we forced it to be via the `rel` directive in the `lea` command. This causes the assembler to output `[r,e]ip` relative instructions. Otherwise the assembler will spit out code that tries to load the address `0x1a` instead of `[rip + 0x1a]`. This can cause... issues. 
+The only reason this code we wrote is position independent is because we forced it to be via the `rel` directive in the `lea` command. This causes the assembler to output `[r,e]ip` relative instructions. Otherwise the assembler will spit out code that tries to load the address `0x19` instead of `[rip + 0x19]`. This can cause... issues. 
 
 Knowing and remembering all the things that could possibly be relative in shellcode is a significant difficulty in it's creation. That being said, we are not at the complaining step yet. So, lets continue with this example.
+
+
+
 
 
 
