@@ -190,7 +190,7 @@ int main(int ac, char* av[]){
 
 Hmmm... that's no good. 
 
-One of the issues with current shellcode generation methodologies is that there is no well defined calling definition. This type of standard is like the `cdecl` and `fastcall` calling conventions. This means we need to be aware of and compensate for this discrepency. This is a common pain point in shellcode development. 
+The only one that worked cleanly was our hand written assembly... One of the issues with current shellcode generation methodologies is that there is no well defined calling definition. This type of standard is like the `cdecl` and `fastcall` calling conventions. This means we need to be aware of and compensate for this discrepency. This is a common pain point in shellcode development. 
 
 As this is not defined for us: this is a nice point of flexability for our technique. We can conform to the calling convention of whatever application we are attacking. 
 
