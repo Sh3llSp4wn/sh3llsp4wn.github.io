@@ -169,8 +169,9 @@ int main(int ac, char* av[]){
   if(!fd) return 1;
 
   // append a breakpoint to the shellcode
-  sc[0] = 0xcc;
-  ret = fread(sc + 1, file_info.st_size, 1, fd);
+  //sc[0] = 0xcc;
+  //ret = fread(sc + 1, file_info.st_size, 1, fd);
+  ret = fread(sc, file_info.st_size, 1, fd);
   if(!ret) {
     fclose(fd);
     free(sc);
@@ -195,6 +196,10 @@ int main(int ac, char* av[]){
 ![](/images/result.png)
 
 Hmmm... that's no good. 
+
+One of the issues with current shellcode generation methodologies is that there is no well defined calling definition. This type of standard is like the `cdecl` and `fastcall` calling conventions. This means we need to be aware of and compensate for this discrepency. This is a common pain point in shellcode development. 
+
+As this is not defined for us: this is a nice point of flexability for our technique. We can conform to the calling convention of whatever application we are attacking. 
 
 ## Bootloaders
 
