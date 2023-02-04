@@ -192,7 +192,7 @@ int main(int ac, char* av[]){
 }
 ```
 
-![](images/result.png)
+![](/images/result.png)
 
 Hmmm... that's no good. 
 
