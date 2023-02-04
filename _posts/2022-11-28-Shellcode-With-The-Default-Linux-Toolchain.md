@@ -169,18 +169,10 @@ int main(int ac, char* av[]){
   if(!fd) return 1;
 
   // append a breakpoint to the shellcode
-  //sc[0] = 0xcc;
-  //ret = fread(sc + 1, file_info.st_size, 1, fd);
-  ret = fread(sc, file_info.st_size, 1, fd);
+  sc[0] = 0xcc;
+  ret = fread(sc + 1, file_info.st_size, 1, fd);
+  //ret = fread(sc, file_info.st_size, 1, fd);
   if(!ret) {
-    fclose(fd);
-    free(sc);
-    return 1;
-  }
-
-  ret = mprotect(sc, file_info.st_size, PROT_READ | PROT_WRITE | PROT_EXEC);
-  if(ret) {
-    perror("ERROR: ");
     fclose(fd);
     free(sc);
     return 1;
@@ -191,6 +183,7 @@ int main(int ac, char* av[]){
 
   return 0;
 }
+
 ```
 
 ![](/images/result.png)
