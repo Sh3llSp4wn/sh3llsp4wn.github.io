@@ -140,7 +140,57 @@ So, based on the output we can see the `ragg2` binary calls `clang` with some sp
 
 ### A Debuggable Shellcode Tester
 
-...
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+
+int main(int ac, char* av[]){
+  if(ac<2) return 1;
+  struct stat file_info;
+  int ret = 0;
+  FILE* fd = NULL;
+  unsigned char *sc = NULL;
+  void (*sc_exec)(void) = NULL;
+
+  ret = stat(av[1], &file_info);
+  if(ret) return 1;
+
+  int mfd = open("/dev/zero", O_RDONLY);
+  sc = mmap(NULL, file_info.st_size + 1, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, mfd, 0);
+  close(mfd);
+
+  if(!sc) return 1;
+
+  fd = fopen(av[1], "r");
+  if(!fd) return 1;
+
+  // append a breakpoint to the shellcode
+  sc[0] = 0xcc;
+  ret = fread(sc + 1, file_info.st_size, 1, fd);
+  if(!ret) {
+    fclose(fd);
+    free(sc);
+    return 1;
+  }
+
+  ret = mprotect(sc, file_info.st_size, PROT_READ | PROT_WRITE | PROT_EXEC);
+  if(ret) {
+    perror("ERROR: ");
+    fclose(fd);
+    free(sc);
+    return 1;
+  }
+
+  sc_exec = sc;
+  (*sc_exec)();
+
+  return 0;
+}
+```
 
 ## Bootloaders
 
