@@ -192,6 +192,10 @@ int main(int ac, char* av[]){
 }
 ```
 
+![](images/result.png)
+
+Hmmm... that's no good. 
+
 ## Bootloaders
 
 Now that we've discussed current shellcode generation strategies, lets take a brief aside on bootloaders. Why? We'll get to that.
