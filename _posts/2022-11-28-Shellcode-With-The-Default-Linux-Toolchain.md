@@ -198,4 +198,31 @@ As this is not defined for us: this is a nice point of flexability for our techn
 
 Now that we've discussed current shellcode generation strategies, lets take a brief aside on bootloaders. Why? We'll get to that.
 
+There are two main strategies to booting a computer. BIOS and UEFI. UEFI is the current standard for most Intel and AMD x86\_64 systems. It relies on a specifically formatted hard drive partition and executes a PE formated executable, which eventually loads the operating system. 
+
+The other mechanism for booting modern computers is via the BIOS. The BIOS is an older standard, and is still in use by older desktops, laptops, and servers. Its boot process is simpler than UEFI but… well, let's get into it.
+
+
+BIOS starts by locating the first block of each of the hard drives attached to the system. If the disk is marked as bootable, then it's first block will be a Master Boot Record. The MBR has the magic value of 0xAA55, and the code needed to start the system. If this magic value is found, the BIOS will attempt to execute the first block as 16 bit "real mode" assembly.
+
+
+The standard block size of a hard drive is 512 bytes. Two of those bytes are reserved for the magic, so that technically gives us 510 bytes of assembly to boot the system. There is no format or file type associated with the MBR, it's just straight up 16 bit x86 opcodes. 
+
+
+The master Boot record is responsible for relocating itself, loading the second stage of the bootloader (grub or BCD, for example), and transitioning into "protected mode" (32 bit x86). If the hardware is 64 bit, then this original switch to protected mode still occurs, and the operating system or bootloader can then transition into "long mode" to finally execute 64 bit instructions.
+
+
+This may sound more complicated than UEFI, but that is not the case, we are just going into more detail about BIOS style booting.
+
+
+At this point you are likely thinking, this is an interesting excerpt from a A+ certification course, but what does this have to do with writing shellcode?
+
+
+Everything of course! This whole process I am describing is still software, and has to be written by people. It's not hand assembled or pulled out of a different executable file format either, it is actually a completely valid configuration for the Linux toolchain. 
+
+
+We can take advantage of this flexibility to write shellcode, and do so without doing anything that violates or misuses features of the Linux toolchain. 
+
+
+Now let's create some shellcode.
 
