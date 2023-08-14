@@ -32,7 +32,7 @@ What is the goal here? What do we mean as shellcode?
 For our purposes: *shellcode* is a chunk of position independent code that is executed in a "remote execution context". Here a remote execution context could be "in the stack of a poorly written HTTP server", or in a remote process via a remote access tool, or even something that runs once the userspace-kernelspace boundary is crossed via an LPE. This section needs no motivation. The ability to create these chunks of code is obviously very useful in a offensive development context.
 
 
-That being said, the process of creating these chunks of code is extremely non-trivial. There are a number of techniques to generate these, and they will be discussed below. If you don't care, please skip to the section called: `But wait, how are bootloaders compiled`
+That being said, the process of creating these chunks of code is extremely non-trivial. There are a number of techniques to generate these, and they will be discussed below. If you don't care, please skip to the section called: `Bootloaders` (It'll make sense once you get there)
 
 
 
@@ -62,7 +62,7 @@ Soo, all this extra code just to do this small pattern...
 
 ![](/images/write_syscall.png)
 
-To call kernel functions from userspace, Linux provides a Application Binary Interface called the Linux ABI. This ABI is used by loading a specific set of registers with the callee function arguments and this loading the `A` register with a specific `syscall` number and then invoking a userspace interrupt. In 32-bit x86 this was `int 0x80`, and in x86\_64 this interrupt is called via the `syscall` instruction.
+To call kernel functions from userspace, Linux provides a Application Binary Interface called the Linux ABI. To use this ABI the program loads a specific set of registers with the callee function arguments and then loads the `A` register with a specific `syscall` number. Then it invokes the userspace interrupt. In 32-bit x86 this was `int 0x80`, and in x86\_64 this interrupt is called via the `syscall` instruction.
 
 We can see in the above screenshot the Linux ABI registers being loaded via various stack arguments and registers. Once `syscall` is executed the AX value is overwritten by the return value of the syscall. The x86\_64 ABI argument registers are as follows:
 
@@ -101,7 +101,7 @@ The only reason this code we wrote is position independent is because we forced 
 
 Knowing and remembering all the things that could possibly be relative in shellcode is a significant difficulty in it's creation. That being said, we are not at the complaining step yet. So, lets continue with this example.
 
-Also, knowing that this is an extremely trivial example, further shows how non-portable and time consuming this variant of shellcode generation can be. Creating a corpus of configurable shellcode binaries such as in the `Metasploit Framework` was an enormous effort that has been crystallized in hacker history. 
+Also, knowing that this is an extremely trivial example, further shows how non-portable and time consuming this variant of shellcode generation can be. Creating a corpus of configurable shellcode binaries such as in the `Metasploit Framework` was an enormous effort that it's developers should be commended for. 
 
 
 We'll save off this `shellcode` file to test in a moment once we have generated some other examples. 
@@ -109,7 +109,7 @@ We'll save off this `shellcode` file to test in a moment once we have generated 
 
 ### Slightly Less Classic Shellcode Technique: pwntools shellcode generators
 
-`pwntools` provides a set of chainable generators that output limited set of pre-compiled chunks of shellcode that can be configured. This method is also really useful if you are generating shellcode for platforms that you are not intimately familiar with.
+`pwntools` provides a set of chainable generators that output limited set of pre-written chunks of assembly language that can then be compiled and extracted from a specific section. This method is also really useful if you are generating shellcode for platforms that you are not intimately familiar with.
 
 Let's put together the same `write` example. 
 
@@ -135,7 +135,7 @@ The wonderful and glorious `radare2` project includes a subproject called `ragg2
 
 ![](/images/ragg2.png)
 
-So, based on the output we can see the `ragg2` binary calls `clang` with some special arguments to better prepare the generated code to be used in a shellcode context. This first call uses the `-S` paramtere which tells `gcc`, `clang`, and some other compilers to output assembler compatible assembly language rather than a binary file. `ragg2` then does... something with this `.s` file and compiles it from assembly language to an ELF. Once this process is complete `ragg2` then uses `rabin2` to carve out the `.text` section, which is our shellcode. We save this off as `shellcode.ragg2` and are finally ready to create our shellcode tester.
+So, based on the output we can see the `ragg2` binary calls `clang` with some special arguments to better prepare the generated code to be used in a shellcode context. This first call uses the `-S` parameter which tells `gcc`, `clang`, and some other compilers to output assembler compatible assembly language rather than a binary file. `ragg2` then does... something with this `.s` file and compiles it from assembly language to an ELF. Once this process is complete `ragg2` then uses `rabin2` to carve out the `.text` section, which is our shellcode. We save this off as `shellcode.ragg2` and are finally ready to create our shellcode tester.
 
 
 ### A Debuggable Shellcode Tester
@@ -149,26 +149,45 @@ So, based on the output we can see the `ragg2` binary calls `clang` with some sp
 #include <sys/mman.h>
 
 int main(int ac, char* av[]){
+  // expect an arguemnt
   if(ac<2) return 1;
+  
+  // local variables for 
+  // reading shellcode file
   struct stat file_info;
   int ret = 0;
   FILE* fd = NULL;
+
+  // function pointer and
+  // the actual shellcode 
   unsigned char *sc = NULL;
   void (*sc_exec)(void) = NULL;
 
+  // if stat fails die
   ret = stat(av[1], &file_info);
   if(ret) return 1;
-
+  
+  // create a RWX page with
+  // the OS supplied size of
+  // the shellcode file
   int mfd = open("/dev/zero", O_RDONLY);
   sc = mmap(NULL, file_info.st_size + 1, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE, mfd, 0);
+  if(!sc) return 1;
   close(mfd);
 
-  if(!sc) return 1;
-
+  // open the shellcode file
   fd = fopen(av[1], "r");
   if(!fd) return 1;
 
   // append a breakpoint to the shellcode
+  // this can be commented out and the second
+  // line with ret ... uncommented to not use
+  // the breakpoint
+  // if you wanted to be fancy you could 
+  // ptrace yourself and check if a debugger
+  // is attached then only prepend the 0xcc
+  // in that case, but this is going in a 
+  // blog post so it ain't that serious
   sc[0] = 0xcc;
   ret = fread(sc + 1, file_info.st_size, 1, fd);
   //ret = fread(sc, file_info.st_size, 1, fd);
@@ -178,6 +197,8 @@ int main(int ac, char* av[]){
     return 1;
   }
 
+  // setup the fn pointer 
+  // and execute it
   sc_exec = sc;
   (*sc_exec)();
 
@@ -198,9 +219,9 @@ As this is not defined for us: this is a nice point of flexability for our techn
 
 Now that we've discussed current shellcode generation strategies, lets take a brief aside on bootloaders. Why? We'll get to that.
 
-There are two main strategies to booting a computer. BIOS and UEFI. UEFI is the current standard for most Intel and AMD x86\_64 systems. It relies on a specifically formatted hard drive partition and executes a PE formated executable, which eventually loads the operating system. 
+There are two main strategies to booting a computer. BIOS and UEFI. UEFI is the current standard for most Intel and AMD x86\_64 systems. It relies on a specifically formatted hard drive partition and executes a TE (a flavor of PE) formated executable, which eventually loads the operating system. 
 
-The other mechanism for booting modern computers is via the BIOS. The BIOS is an older standard, and is still in use by older desktops, laptops, and servers. Its boot process is simpler than UEFI but… well, let's get into it.
+The other mechanism for booting modern computers is via the BIOS. The BIOS is an older standard, and is still in use by older desktops, laptops, and servers. Its boot process is simpler than UEFI.
 
 
 BIOS starts by locating the first block of each of the hard drives attached to the system. If the disk is marked as bootable, then it's first block will be a Master Boot Record. The MBR has the magic value of 0xAA55, and the code needed to start the system. If this magic value is found, the BIOS will attempt to execute the first block as 16 bit "real mode" assembly.
@@ -226,3 +247,7 @@ We can take advantage of this flexibility to write shellcode, and do so without 
 
 Now let's create some shellcode.
 
+
+Oh, wait! I almost forgot to include a furry image to piss off /r/netsec, so here you go. This is Apollo, he'll be comming along with us for this journey.
+
+![](/images/netsec.png)
