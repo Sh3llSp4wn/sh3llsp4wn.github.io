@@ -34,8 +34,122 @@ Welcome back to CompSci 101, bitches.
 
 ![I was a smoker in college, so let me have this.](/images/netsec2.png)
 
-It's time for a quick lesson on the steps used by the toolchain to create the output binary. There are three standard steps. These steps are as follows.
+It's time for a quick review of the steps used by the toolchain to create the output binary. There are three standard steps. These steps are as follows.
 
-* Lexical Processing
-* Compilation
-* Linking
+* Lexical Processing (C -> AST)
+* Compilation (AST -> ASM/.o)
+* Linking (.o -> .elf/.so/etc)
+
+The main step we are concerned with here is the linking step. That's where the core of this set of techniques come from. The linker's job is to resolve symbols between object files and construct the requested binary from them. This is done via a *linker script* (this part is important, so remember it.) Object files are, mostly, 1-to-1 with the `.c` files that functions exist in. The general pattern that C projects follow is to have the compiler generate object files from all of the `.c` files and then use the linker to bind all of the resultant `.o` files into the final binary(ies).
+
+This allows us to define any of the functions that we use in our project. If we define `write` and use it in our project, the linker will generally prefer to use the implementation provided by the project. User defined code nearly always has preference to library code durring this step. (Specific configurations violate this principal, but that is out of scope here.).
+
+That was technical, so lets take a step back and contextualize this. We want the above C code to become shellcode. As it stands, running `gcc hello.c` will just produce an `a.out`. This file is a linux ELF which relies on the standard library's implementation of `write`. Our next step is to figure out how to elemenate this dependency and how to instruct the linker to create the kind of file we want. 
+
+## Linker Scripts, and other witchcraft punishable by the church
+
+Linkers use scripts to define the file format of the binary it is tasked to create. The ELF and SO file formats are defined via these scripts. These scripts are, usually, not exposed to the developer using `gcc` and `ld`
+
+In total honesty, these scripts are still somewhat of an enigma to me. I was able to cobble together one that created shellcode by, mostly, trial and error.  That script is as follows.
+
+```
+MEMORY
+  {
+    RAM : ORIGIN = 0, LENGTH = 4M
+  }
+
+REGION_ALIAS("REGION_TEXT", RAM);
+REGION_ALIAS("REGION_RODATA", RAM);
+REGION_ALIAS("REGION_DATA", RAM);
+REGION_ALIAS("REGION_BSS", RAM);
+
+ENTRY(start_external)
+
+SECTIONS
+  {
+    .text :
+      {
+        /*
+         * Align on 1 may cause breakage.
+         * SO, don't say I didn't warn you.
+         */
+        . = ALIGN(1);
+        /*
+         * hmm yes, the text segment address 
+         * is made out of text segment address
+         */
+        *(.text)
+      } > REGION_TEXT
+    .rodata :
+      {
+        /* I'll not make the same joke twice
+         * but basically just say the .rodata
+         * pointer exists at the current cursor
+         * location 
+         */
+        *(.rodata)
+        /*rodata_end = .;*/
+       } > REGION_RODATA
+   }
+    /*.data : AT (rodata_end)
+      {
+        data_start = .;
+        *(.data)
+      } > REGION_DATA
+    data_size = SIZEOF(.data);
+    data_load_start = LOADADDR(.data);
+    .bss :
+      {
+        *(.bss)
+      } > REGION_BSS
+  }*/
+```
+
+
+I understand that this script is pretty hidious, so if anyone has more experience with these things, please reach out. I would love to learn more.
+
+This script expects the symbol `start_external` to exist. Any set of object files that have this symbol defined should technically link via this script, but YMMV.
+
+This leads us to something we have to define ourselves. This linker script expects `start_external` to exist and to be the entry point. So lets do that. Right now this is x86\_64 specific, but other `start.s` variants can be created that serve other architectures. 
+
+
+```asm
+.text
+.intel_syntax noprefix
+.extern _start
+.global start_external
+.equ SYS_exit, 60
+
+start_external:
+call _start
+mov rax, SYS_exit
+syscall
+```
+
+Now for a little bit of congratulations to ourselves. Let's talk about what this gives us. The linker script above puts the `start_external` function as the first byte of the output file (as long as `start.o` is the first file given to the linker). This means as long as we implement `start_external` we have shellcode that is linked by this script with only one architecture dependent assembly file. 
+
+We do, however, need this asm file to call into our C code. That is via the expectation of a defined `_start` function.
+
+All the above code does is define a text segment (where binary code lives in an ELF file), call into `_start`, and then `exit()` via direct syscall invocation.
+
+
+So, let's modify our C code to define the new C entry point `_start`.
+
+```c
+static char* msg = "Hello, Friend\n";
+
+int _start(){
+  int size = write(1, msg, sizeof(msg));
+  return 0;                                    
+}
+```
+
+Another thing to note is that we can define the function prototype of `_start` to be anything we like. If we make the assumption that the shellcode we generate is going to be used via a call to a function pointer then we can define this function prototype to accept arguments. The only limitation to this I can think of is that `start_external` must not modify register state. (If you implement this for 32 bit x86 then you may want to switch out the `call` for a `jmp` and exit from your shellcode itself, so the stack remains how the callee function expects it.)
+
+Also, after `_start` ends execution our `start_external` function can be programmed to do anything. This implementation just calls exit, but it could also be used to return execution to the infected process, or do any other repair operations that is needed post-execution of the shellcode. 
+
+That leaves `write` and what we are going to do about it.
+
+## The Interface File
+
+The nice thing about `write` is that it is a direct syscall. 
