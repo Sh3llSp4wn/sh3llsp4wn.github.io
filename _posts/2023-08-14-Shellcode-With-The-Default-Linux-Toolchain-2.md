@@ -2,6 +2,7 @@
 layout: post
 title: Offensive Tool Development - The Shellcode Compiler Was Right There All Along... (Part 2)
 ---
+*Apparently, I need to put something here so a section title doesn't become the preview text...*
 
 # A "Shellcode" configuration for the Linux Toolchain
 
