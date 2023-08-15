@@ -113,7 +113,7 @@ This script expects the symbol `start_external` to exist. Any set of object file
 This leads us to something we have to define ourselves. This linker script expects `start_external` to exist and to be the entry point. So lets do that. Right now this is x86\_64 specific, but other `start.s` variants can be created that serve other architectures. 
 
 
-```asm
+```assembly
 .text
 .intel_syntax noprefix
 .extern _start
@@ -152,4 +152,108 @@ That leaves `write` and what we are going to do about it.
 
 ## The Interface File
 
-The nice thing about `write` is that it is a direct syscall. 
+The nice thing about `write` is that it is a direct syscall. To invoke it we load the registers mentioned in the previous post with the arguments we would like to provide to the system call, load the A register with the syscall number (RAX/EAX/etc), and invoke the user mode interupt. The syscall patterns are below.
+
+```python
+syscall_reg_seq = ['rdi', 'rsi', 'rdx', 'r10', 'r8', 'r9']
+usermode_reg_seq = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
+```
+
+As you can see these are pretty close to one another and this has led to some truely insidious bugs in the course of this research. This is also just two of the calling conventions based on registers. `usermode_reg_seq` is just the sequence needed for calling system libraries (such as the c standard library), and `syscall_reg_seq` is how you order arguments for the kernel.
+
+Now, let's actually provide this syscall to the program we are writing. We will do so via a small assembly program.
+
+```assembly
+.text
+.intel_syntax noprefix
+
+.global _write
+
+.equ SYS_write, 1
+
+# just load rax with the number and syscall
+.macro direct_syscall syscall_number, symbol
+\symbol:
+mov rax, \syscall_number
+syscall
+ret
+# end the macro
+.endm 
+
+# generate the code
+direct_syscall SYS_write, _write
+```
+
+Nice! Now we have a macro we can wrap around any syscall we want with a small edit to this file. 
+
+![](/images/netsec.png)
+
+
+For example to add `read` we'd just need to add the following:
+
+```assembly
+.text
+.intel_syntax noprefix
+
+.global _write
+.global _read
+
+.equ SYS_read, 0
+.equ SYS_write, 1
+
+# just load rax with the number and syscall
+.macro direct_syscall syscall_number, symbol
+\symbol:
+mov rax, \syscall_number
+syscall
+ret
+# end the macro
+.endm 
+
+# generate the code
+direct_syscall SYS_write, _write
+direct_syscall SYS_read, _read
+```
+
+At this point, it looks like we have everything we need. Let's throw it together in a simple `Makefile` and see if it builds.
+
+
+```makefile
+CC=gcc
+CFLAGS=-fPIC -Os -fno-stack-protector -ggdb
+AS=as
+LD=ld
+LDFLAGS=--gc-sections
+
+LINK_ORDER=start.o plat_iface.o hello.o
+
+all:
+        $(CC) -o hello.o $(CFLAGS) -c hello.c
+        $(AS) -o plat_iface.o plat_iface.s
+        $(AS) -o start.o start.s
+        $(LD) -o hello.elf $(LDFLAGS) $(LINK_ORDER) -T elf.ld
+        $(LD) -o hello.bin $(LDFLAGS) $(LINK_ORDER) -T binary2.ld --oformat=binary
+
+clean:
+        rm *.o *.elf *.bin
+```
+
+This one requires a simple linker script called elf.ld, which is below.
+
+```
+ENTRY(start_external)
+
+SECTIONS
+{
+  . = 0x42000;
+  .text : { *(.text) }
+  . = 0x690000;
+  .data : { *(.data) }
+  .bss : { *(.bss) }
+}
+
+```
+
+Okay, so after building all of this we have an elf and a bin file containing the same code. I like having the project build the ELF as well, for easier debugging. (`-ggdb` flag actually works on the elf and gdb works as expected)
+
+Run the code in the shellcode runner from last time. Try invoking it in python or calling it from one of those oldschool style shellcode cradles (extra credit if you can tell me why those all segfault now.)
