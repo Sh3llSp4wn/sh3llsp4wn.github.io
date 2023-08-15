@@ -4,6 +4,10 @@ title: Offensive Tool Development - The Shellcode Compiler Was Right There All A
 ---
 *TLDR; Linker scripts can be used to generate shellcode via C in a fairly platform agnostic way. This allows offensive developers to use the full capabilities of the Linux Toolchain, sans library code (until a dynamic loader for library calls can be devised)*
 
+*Also, this post is optional. It motivates the next post in this serise which goes into detail about the technique itself, instead of the motivation and avenues of research that lead to it.*
+
+*Finally, this is not a novel technqiue. I am attempting to present this technique in a much more friendly way than I was introduced to it. I also do not know who thought of this first, but the FOLOIAGE project on github was the earliest example of it I could find.*
+
 
 # What we will be studying with this series
 * Shellcode Generation with `gcc`, `ld`, and `as`.
@@ -249,5 +253,8 @@ Now let's create some shellcode.
 
 
 Oh, wait! I almost forgot to include a furry image to piss off /r/netsec, so here you go. This is Apollo, he'll be comming along with us for this journey.
+
+
+[Part 2]({% post_url 2023-08-14-Shellcode-With-The-Default-Linux-Toolchain-2 %})
 
 ![](/images/netsec.png)

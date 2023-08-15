@@ -152,16 +152,16 @@ That leaves `write` and what we are going to do about it.
 
 ## The Interface File
 
-The nice thing about `write` is that it is a direct syscall. To invoke it we load the registers mentioned in the previous post with the arguments we would like to provide to the system call, load the A register with the syscall number (RAX/EAX/etc), and invoke the user mode interupt. The syscall patterns are below.
+The nice thing about `write` is that it is a direct syscall. To invoke it we load the registers mentioned in the previous post, load the A register with the syscall number (RAX/EAX/etc), and invoke the user mode interupt. The register patterns are below.
 
 ```python
 syscall_reg_seq = ['rdi', 'rsi', 'rdx', 'r10', 'r8', 'r9']
 usermode_reg_seq = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9']
 ```
 
-As you can see these are pretty close to one another and this has led to some truely insidious bugs in the course of this research. This is also just two of the calling conventions based on registers. `usermode_reg_seq` is just the sequence needed for calling system libraries (such as the c standard library), and `syscall_reg_seq` is how you order arguments for the kernel.
+As you can see these are pretty close to one another. This has led to some truely insidious bugs in the course of this research. This is also just two of the calling conventions based on registers. `usermode_reg_seq` is the sequence needed for calling system libraries (such as the c standard library), and `syscall_reg_seq` is how you order arguments for the kernel.
 
-Now, let's actually provide this syscall to the program we are writing. We will do so via a small assembly program.
+Now, let's actually provide this syscall to the program we are writing. We will do so via a small assembly program. That puts us at two small architecture specific assembly files. This is actually all we will need.
 
 ```assembly
 .text
@@ -215,6 +215,18 @@ direct_syscall SYS_write, _write
 direct_syscall SYS_read, _read
 ```
 
+Let's make the final modifications to the `hello.c` we have been working on:
+
+```c
+static char* msg = "Hello, Friend\n";
+extern int _write(int, const char[], int);
+
+int _start(){
+  int size = _write(1, msg, sizeof(msg));
+  return 0;                                    
+}
+```
+
 At this point, it looks like we have everything we need. Let's throw it together in a simple `Makefile` and see if it builds.
 
 
@@ -238,7 +250,7 @@ clean:
         rm *.o *.elf *.bin
 ```
 
-This one requires a simple linker script called elf.ld, which is below.
+This Makefile requires a simple linker script called elf.ld, which is below.
 
 ```
 ENTRY(start_external)
@@ -257,3 +269,19 @@ SECTIONS
 Okay, so after building all of this we have an elf and a bin file containing the same code. I like having the project build the ELF as well, for easier debugging. (`-ggdb` flag actually works on the elf and gdb works as expected)
 
 Run the code in the shellcode runner from last time. Try invoking it in python or calling it from one of those oldschool style shellcode cradles (extra credit if you can tell me why those all segfault now.)
+
+You might want to stop here and try and identify some of the difficulties we will be addressing in the next post. Those will be below the following image of Apollo, in case you don't want any spoilers.
+
+
+![](/images/netsec.png)
+
+## Spoiler Section
+
+Issues to address:
+
+* Allocating memory
+* Resolving and calling into library functions
+* Can we have more than one "exported function"?
+
+
+Tune in next time to find out!
