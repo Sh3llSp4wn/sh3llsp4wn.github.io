@@ -282,6 +282,7 @@ Issues to address:
 * Allocating memory
 * Resolving and calling into library functions
 * Can we have more than one "exported function"?
+* What is with all that garbage after the shellcode?
 
 
 Tune in next time to find out!
