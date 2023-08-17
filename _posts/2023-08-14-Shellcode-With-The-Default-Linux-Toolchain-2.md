@@ -17,7 +17,7 @@ We are going to need some ingredients to make this work. So, lets look at our C 
 static char* msg = "Hello, Friend\n";
 
 int main(){
-  int size = write(1, msg, sizeof(msg));
+  int size = write(1, msg, 14);
   return 0;                                    
 }
 ```
@@ -139,7 +139,7 @@ So, let's modify our C code to define the new C entry point `_start`.
 static char* msg = "Hello, Friend\n";
 
 int _start(){
-  int size = write(1, msg, sizeof(msg));
+  int size = write(1, msg, 14);
   return 0;                                    
 }
 ```
@@ -222,7 +222,7 @@ static char* msg = "Hello, Friend\n";
 extern int _write(int, const char[], int);
 
 int _start(){
-  int size = _write(1, msg, sizeof(msg));
+  int size = _write(1, msg, 14);
   return 0;                                    
 }
 ```

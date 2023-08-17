@@ -49,7 +49,7 @@ A classic technique for the creation of shellcode is, in effect, The most direct
 static char* msg = "Hello, Friend\n";
 
 int main(){
-  int size = write(1, msg, sizeof(msg));
+  int size = write(1, msg, 14);
   return 0;
 }
 
