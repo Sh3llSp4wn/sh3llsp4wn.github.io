@@ -4,9 +4,9 @@ title: Offensive Tool Development - The Shellcode Compiler Was Right There All A
 ---
 *TLDR; Linker scripts can be used to generate shellcode via C in a fairly platform agnostic way. This allows offensive developers to use the full capabilities of the Linux Toolchain, sans library code (until a dynamic loader for library calls can be devised)*
 
-*Also, this post is optional. It motivates the next post in this serise which goes into detail about the technique itself, instead of the motivation and avenues of research that lead to it.*
+*Also, this post is optional. It motivates the next post in this series which goes into detail about the technique itself, instead of the motivation and avenues of research that lead to it.*
 
-*Finally, this is not a novel technqiue. I am attempting to present this technique in a much more friendly way than I was introduced to it. I also do not know who thought of this first, but the FOLOIAGE project on github was the earliest example of it I could find.*
+*Finally, this is not a novel technique. I am attempting to present this technique in a much more friendly way than I was introduced to it. I also do not know who thought of this first, but the FOLIAGE project on github was the earliest example of it I could find.*
 
 
 # What we will be studying with this series
@@ -183,7 +183,7 @@ int main(int ac, char* av[]){
   fd = fopen(av[1], "r");
   if(!fd) return 1;
 
-  // append a breakpoint to the shellcode
+  // prepend a breakpoint to the shellcode
   // this can be commented out and the second
   // line with ret ... uncommented to not use
   // the breakpoint
